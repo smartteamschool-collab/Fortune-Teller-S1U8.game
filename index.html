@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fortune Teller</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #5b2a86 0%, #3b1d6e 100%);
+    min-height: 100vh;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .app {
+    width: 100%;
+    max-width: 720px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 2em; letter-spacing: 0.5px; }
+  .badge {
+    display: inline-block; background: #7c3aed; color: #fff;
+    font-size: 0.7em; font-weight: 700; letter-spacing: 1px;
+    padding: 5px 14px; border-radius: 20px; margin-top: 8px; text-transform: uppercase;
+  }
+  .screen { display: none; animation: fade 0.4s ease; }
+  .screen.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px);} to {opacity:1; transform:none;} }
+
+  /* Explanation */
+  .lesson-box {
+    background: rgba(255,255,255,0.1); border-radius: 16px; padding: 22px; margin-bottom: 16px;
+    border-left: 4px solid #a78bfa;
+  }
+  .lesson-box h2 { color: #d6bcff; font-size: 1.25em; margin-bottom: 12px; }
+  .lesson-box p { line-height: 1.6; margin-bottom: 10px; font-size: 1.02em; }
+  .formula {
+    background: rgba(0,0,0,0.25); border-radius: 12px; padding: 14px; text-align: center;
+    font-size: 1.15em; margin: 14px 0; font-weight: 600;
+  }
+  .formula .hl { color: #ffd166; }
+  .ex-grid { display: grid; gap: 10px; margin-top: 8px; }
+  .ex-row {
+    display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.07);
+    padding: 12px 14px; border-radius: 10px; font-size: 0.98em;
+  }
+  .ex-row .tag {
+    flex-shrink: 0; font-size: 0.7em; font-weight: 700; padding: 4px 8px; border-radius: 6px;
+    text-transform: uppercase; min-width: 70px; text-align: center;
+  }
+  .tag.q { background: #2563eb; }
+  .tag.aff { background: #16a34a; }
+  .tag.neg { background: #dc2626; }
+
+  /* Buttons */
+  .btn {
+    display: block; width: 100%; border: none; cursor: pointer;
+    background: #7c3aed; color: #fff; font-size: 1.1em; font-weight: 700;
+    padding: 16px; border-radius: 14px; transition: transform 0.15s, background 0.2s;
+    margin-top: 8px;
+  }
+  .btn:hover { background: #8b5cf6; transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost { background: rgba(255,255,255,0.12); }
+  .btn.ghost:hover { background: rgba(255,255,255,0.2); }
+
+  /* Game */
+  .turn-banner {
+    text-align: center; font-size: 1.3em; font-weight: 800; padding: 12px;
+    border-radius: 14px; margin-bottom: 18px; transition: background 0.3s;
+  }
+  .turn-a { background: linear-gradient(90deg,#2563eb,#3b82f6); }
+  .turn-b { background: linear-gradient(90deg,#16a34a,#22c55e); }
+
+  .card {
+    background: linear-gradient(135deg, #6d28d9, #4c1d95);
+    border-radius: 20px; padding: 30px 24px; text-align: center; min-height: 200px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.25); position: relative; margin-bottom: 18px;
+  }
+  .card .num {
+    position: absolute; top: 14px; left: 14px; background: rgba(255,255,255,0.25);
+    width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-weight: 700;
+  }
+  .card .ft-label { font-size: 0.7em; letter-spacing: 2px; opacity: 0.7; margin-bottom: 14px; text-transform: uppercase; }
+  .card .prompt { font-size: 1.5em; font-weight: 700; line-height: 1.4; }
+  .card .ask {
+    margin-top: 18px; background: rgba(255,209,102,0.18); border: 1px dashed #ffd166;
+    border-radius: 12px; padding: 12px 16px; font-size: 1.15em; color: #ffe7a8; font-weight: 600;
+    display: none;
+  }
+  .card .ask.show { display: block; animation: fade 0.3s ease; }
+
+  .answer-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .answer-row .btn { margin-top: 0; }
+  .btn.yes { background: #16a34a; }
+  .btn.yes:hover { background: #22c55e; }
+  .btn.no { background: #dc2626; }
+  .btn.no:hover { background: #ef4444; }
+
+  .model-answer {
+    background: rgba(255,255,255,0.1); border-radius: 12px; padding: 14px; margin-bottom: 14px;
+    font-size: 1.05em; line-height: 1.5; display: none;
+  }
+  .model-answer.show { display: block; animation: fade 0.3s ease; }
+  .model-answer b { color: #ffd166; }
+
+  .progress { text-align: center; opacity: 0.7; font-size: 0.9em; margin-top: 14px; }
+  .hidden { display: none !important; }
+
+  /* End */
+  .end-box { text-align: center; padding: 20px 0; }
+  .end-box .big { font-size: 3em; margin-bottom: 10px; }
+  .end-box h2 { color: #d6bcff; margin-bottom: 14px; }
+  .end-box p { line-height: 1.6; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>🔮 The Fortune Teller</h1>
+    <span class="badge">Future "going to" · Smart Team</span>
+  </div>
+
+  <!-- SCREEN 1: Lesson -->
+  <div class="screen active" id="lesson">
+    <div class="lesson-box">
+      <h2>📖 How does "going to" work?</h2>
+      <p>We use <b>going to</b> to talk about future plans and predictions — things we think <i>will</i> happen.</p>
+      <div class="formula">
+        <span class="hl">am / is / are</span> + going to + <span class="hl">verb</span>
+      </div>
+      <div class="ex-grid">
+        <div class="ex-row"><span class="tag q">Question</span><span><b>Are</b> you <b>going to</b> win the lottery?</span></div>
+        <div class="ex-row"><span class="tag aff">Yes 👍</span><span>Yes, I <b>am</b>. I'm <b>going to</b> buy a house!</span></div>
+        <div class="ex-row"><span class="tag neg">No 👎</span><span>No, I'm <b>not going to</b> win. I never play!</span></div>
+      </div>
+    </div>
+    <div class="lesson-box">
+      <h2>🎮 How to play</h2>
+      <p>1. A fortune card appears. The current player reads the prediction and turns it into a <b>question</b>.</p>
+      <p>2. The other player <b>answers</b> (Yes or No) and adds one extra sentence.</p>
+      <p>3. Then it's the other player's turn! Take turns until all cards are done. 🔄</p>
+    </div>
+    <button class="btn" onclick="startGame()">Start the game ✨</button>
+  </div>
+
+  <!-- SCREEN 2: Game -->
+  <div class="screen" id="game">
+    <div class="turn-banner turn-a" id="turnBanner">👤 Student A asks</div>
+
+    <div class="card">
+      <div class="num" id="cardNum">1</div>
+      <div class="ft-label">Fortune Teller</div>
+      <div class="prompt" id="cardPrompt">You are going to win the lottery.</div>
+      <div class="ask" id="askBubble"></div>
+    </div>
+
+    <button class="btn ghost" id="revealBtn" onclick="revealQuestion()">🗣️ Show the question to ask</button>
+
+    <div id="answerSection" class="hidden">
+      <div class="answer-row">
+        <button class="btn yes" onclick="answer('yes')">👍 Yes</button>
+        <button class="btn no" onclick="answer('no')">👎 No</button>
+      </div>
+      <div class="model-answer" id="modelAnswer"></div>
+      <button class="btn hidden" id="nextBtn" onclick="nextTurn()">Next turn →</button>
+    </div>
+
+    <div class="progress" id="progress">Card 1 of 15</div>
+  </div>
+
+  <!-- SCREEN 3: End -->
+  <div class="screen" id="end">
+    <div class="end-box">
+      <div class="big">🎉</div>
+      <h2>Great job, fortune tellers!</h2>
+      <p>You practiced all 15 predictions using <b>going to</b>.</p>
+      <p><b>Wrap-up:</b> Who is going to do something exciting? Who is NOT going to do anything dangerous? Vote on the funniest prediction!</p>
+      <button class="btn" onclick="restart()">Play again 🔁</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const cards = [
+    "win the lottery", "meet a famous singer", "travel to the moon",
+    "marry a celebrity", "become a millionaire", "live in another country",
+    "find a treasure", "have 5 kids", "open your own business",
+    "learn to fly a plane", "write a book", "adopt 3 dogs",
+    "become famous on social media", "run a marathon", "buy a big house"
+  ];
+
+  // build question form: drop subject, add "Are you going to ...?"
+  function makeQuestion(phrase) {
+    return "Are you going to " + phrase + "?";
+  }
+  function makeYes(phrase) {
+    return "Yes, I am! I'm going to " + phrase + ".";
+  }
+  function makeNo(phrase) {
+    return "No, I'm not going to " + phrase + ".";
+  }
+
+  let order = [];
+  let idx = 0;
+  let currentAsker = 'A'; // A asks, B answers
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function show(screen) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screen).classList.add('active');
+  }
+
+  function startGame() {
+    order = shuffle(cards.map((c, i) => ({ phrase: c, n: i + 1 })));
+    idx = 0;
+    currentAsker = 'A';
+    show('game');
+    loadCard();
+  }
+
+  function loadCard() {
+    const item = order[idx];
+    document.getElementById('cardNum').textContent = item.n;
+    document.getElementById('cardPrompt').textContent =
+      "You are going to " + item.phrase + ".";
+
+    // banner shows who asks
+    const banner = document.getElementById('turnBanner');
+    if (currentAsker === 'A') {
+      banner.textContent = "👤 Student A asks → Student B answers";
+      banner.className = "turn-banner turn-a";
+    } else {
+      banner.textContent = "🧑 Student B asks → Student A answers";
+      banner.className = "turn-banner turn-b";
+    }
+
+    // reset UI
+    document.getElementById('askBubble').classList.remove('show');
+    document.getElementById('askBubble').textContent = "";
+    document.getElementById('revealBtn').classList.remove('hidden');
+    document.getElementById('answerSection').classList.add('hidden');
+    document.getElementById('modelAnswer').classList.remove('show');
+    document.getElementById('nextBtn').classList.add('hidden');
+
+    document.getElementById('progress').textContent =
+      "Card " + (idx + 1) + " of " + order.length;
+  }
+
+  function revealQuestion() {
+    const item = order[idx];
+    const bubble = document.getElementById('askBubble');
+    bubble.textContent = "💬 " + makeQuestion(item.phrase);
+    bubble.classList.add('show');
+    document.getElementById('revealBtn').classList.add('hidden');
+    document.getElementById('answerSection').classList.remove('hidden');
+  }
+
+  function answer(type) {
+    const item = order[idx];
+    const ma = document.getElementById('modelAnswer');
+    if (type === 'yes') {
+      ma.innerHTML = "👍 <b>Affirmative:</b> " + makeYes(item.phrase) + "<br><span style='opacity:.8'>Now add your own extra sentence out loud!</span>";
+    } else {
+      ma.innerHTML = "👎 <b>Negative:</b> " + makeNo(item.phrase) + "<br><span style='opacity:.8'>Now say why not!</span>";
+    }
+    ma.classList.add('show');
+    document.getElementById('nextBtn').classList.remove('hidden');
+  }
+
+  function nextTurn() {
+    idx++;
+    currentAsker = currentAsker === 'A' ? 'B' : 'A'; // swap roles
+    if (idx >= order.length) {
+      show('end');
+    } else {
+      loadCard();
+    }
+  }
+
+  function restart() {
+    show('lesson');
+  }
+</script>
+</body>
+</html>
