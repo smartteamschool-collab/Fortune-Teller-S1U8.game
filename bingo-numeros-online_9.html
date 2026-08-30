@@ -279,6 +279,7 @@ footer{text-align:center;color:#C9BEDD;font-size:12px;margin-top:24px;}
           <div class="progress-text" id="progressText">0 / 100 sorteados</div>
           <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
           <div class="winners-banner" id="winnersBanner"></div>
+          <div id="syncWarning" style="display:none;text-align:center;background:rgba(217,83,79,0.18);border:2px solid var(--red);border-radius:12px;padding:10px;margin-top:10px;font-size:12.5px;font-weight:700;"></div>
           <h2 style="margin-top:18px;">Últimos números</h2>
           <div class="history-strip" id="historyStrip"><span class="empty-hint">Ainda nenhum número sorteado.</span></div>
         </div>
@@ -296,6 +297,7 @@ footer{text-align:center;color:#C9BEDD;font-size:12px;margin-top:24px;}
       <div class="student-status" id="studentStatus"><span class="dot off"></span><span>Conectando…</span></div>
       <button class="btn btn-outline btn-sm" id="studentRefreshBtn" style="margin-top:8px;">🔄 Atualizar agora</button>
       <div id="lastSyncNote" style="text-align:center;margin-top:6px;font-size:11.5px;color:#C9BEDD;"></div>
+      <div id="sseCountNote" style="text-align:center;margin-top:2px;font-size:11.5px;color:#C9BEDD;"></div>
     </div>
     <div class="panel">
       <h3 id="studentName" style="font-family:'Poppins',sans-serif;text-align:center;font-size:22px;margin:0 0 2px;">Olá!</h3>
@@ -2746,11 +2748,24 @@ async function publishState(){
   const topic = getRoomTopic();
   if(!topic) return;
   try{
-    await fetch(NTFY_BASE + '/' + encodeURIComponent(topic), {
+    const res = await fetch(NTFY_BASE + '/' + encodeURIComponent(topic), {
       method:'POST',
       body: JSON.stringify(buildStateSnapshot())
     });
-  }catch(e){ /* teacher stays authoritative locally even if this fails */ }
+    showSyncWarning(!res.ok, res.status);
+  }catch(e){
+    showSyncWarning(true, null);
+  }
+}
+
+function showSyncWarning(hasError, status){
+  const el = document.getElementById('syncWarning');
+  if(!el) return;
+  if(!hasError){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.textContent = status
+    ? `⚠️ Falha ao sincronizar com os alunos (código ${status}). Tentando de novo no próximo sorteio.`
+    : '⚠️ Falha ao sincronizar com os alunos (sem conexão). Tentando de novo no próximo sorteio.';
 }
 
 async function fetchLatestState(topic){
@@ -3262,6 +3277,7 @@ function initStudentMode(){
   renderGrid(new Set(), null);
 
   let announcedWinners = new Set();
+  let messagesReceivedCount = 0;
 
   function setStatus(text, ok){
     const el = document.getElementById('studentStatus');
@@ -3314,6 +3330,9 @@ function initStudentMode(){
     };
     es.onerror = ()=> setStatus('Reconectando…', false);
     es.onmessage = (ev)=>{
+      messagesReceivedCount++;
+      const cnt = document.getElementById('sseCountNote');
+      if(cnt) cnt.textContent = 'Mensagens ao vivo recebidas: ' + messagesReceivedCount;
       try{
         const envelope = JSON.parse(ev.data);
         if(envelope.event==='message' && envelope.message){
