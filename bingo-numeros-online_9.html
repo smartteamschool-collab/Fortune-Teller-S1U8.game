@@ -295,6 +295,7 @@ footer{text-align:center;color:#C9BEDD;font-size:12px;margin-top:24px;}
     <div class="student-center">
       <div class="student-status" id="studentStatus"><span class="dot off"></span><span>Conectando…</span></div>
       <button class="btn btn-outline btn-sm" id="studentRefreshBtn" style="margin-top:8px;">🔄 Atualizar agora</button>
+      <div id="lastSyncNote" style="text-align:center;margin-top:6px;font-size:11.5px;color:#C9BEDD;"></div>
     </div>
     <div class="panel">
       <h3 id="studentName" style="font-family:'Poppins',sans-serif;text-align:center;font-size:22px;margin:0 0 2px;">Olá!</h3>
@@ -3270,6 +3271,8 @@ function initStudentMode(){
 
   function handleIncomingState(state){
     if(!state) return;
+    const note = document.getElementById('lastSyncNote');
+    if(note) note.textContent = 'Última atualização recebida: ' + new Date().toLocaleTimeString();
     const ds = new Set(state.drawnNumbers || []);
     renderGrid(ds, null);
     (state.winners||[]).forEach(win=>{
