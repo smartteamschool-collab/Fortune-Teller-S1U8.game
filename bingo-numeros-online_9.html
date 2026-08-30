@@ -193,6 +193,8 @@ footer{text-align:center;color:#C9BEDD;font-size:12px;margin-top:24px;}
 .winner-sub{font-family:'Poppins',sans-serif;font-weight:700;color:var(--sky);margin-bottom:16px;}
 .winner-actions{display:flex;gap:10px;margin-top:16px;}
 .winner-actions button{flex:1;}
+.winner-actions .btn-outline{color:var(--purple-2);border-color:var(--sky);}
+.winner-actions .btn-outline:hover{background:rgba(85,170,199,0.12);}
 
 @media print{
   body{background:white !important;color:black !important;}
@@ -292,6 +294,7 @@ footer{text-align:center;color:#C9BEDD;font-size:12px;margin-top:24px;}
   <section id="studentView">
     <div class="student-center">
       <div class="student-status" id="studentStatus"><span class="dot off"></span><span>Conectando…</span></div>
+      <button class="btn btn-outline btn-sm" id="studentRefreshBtn" style="margin-top:8px;">🔄 Atualizar agora</button>
     </div>
     <div class="panel">
       <h3 id="studentName" style="font-family:'Poppins',sans-serif;text-align:center;font-size:22px;margin:0 0 2px;">Olá!</h3>
@@ -3291,14 +3294,21 @@ function initStudentMode(){
     });
   }
 
+  async function resync(){
+    const latest = await fetchLatestState(roomId);
+    if(latest) handleIncomingState(latest);
+  }
+
   setStatus('Conectando…', false);
 
   (async ()=>{
-    const initial = await fetchLatestState(roomId);
-    if(initial) handleIncomingState(initial);
+    await resync();
 
     const es = new EventSource(NTFY_BASE + '/' + encodeURIComponent(roomId) + '/sse');
-    es.onopen = ()=> setStatus('Sincronizado ✓', true);
+    es.onopen = ()=>{
+      setStatus('Sincronizado ✓', true);
+      resync(); // reconecta e recupera qualquer atualização perdida enquanto estava fora do ar
+    };
     es.onerror = ()=> setStatus('Reconectando…', false);
     es.onmessage = (ev)=>{
       try{
@@ -3308,6 +3318,21 @@ function initStudentMode(){
         }
       }catch(e){}
     };
+
+    // quando o celular volta do bloqueio de tela / segundo plano, força uma atualização
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.visibilityState === 'visible'){
+        resync();
+      }
+    });
+
+    const refreshBtn = document.getElementById('studentRefreshBtn');
+    if(refreshBtn){
+      refreshBtn.onclick = ()=>{
+        setStatus('Atualizando…', false);
+        resync().then(()=> setStatus('Sincronizado ✓', true));
+      };
+    }
   })();
 }
 
